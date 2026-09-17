@@ -1,95 +1,112 @@
 package com.learning.order_management.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.PositiveOrZero;
 
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@Table(name = "orders")
 public class Order {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @NotBlank(message = "userId cannot be blank")
+
+    @Column(name = "user_id", nullable = false)
     private Long userId;
-    @NotBlank(message = "status cannot be empty")
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private OrderStatus status;
-    @PositiveOrZero(message = "total_amount cannot be -ve or zero")
+
+    @Column(name = "total_amount",
+            nullable = false,
+            precision = 12,
+            scale = 2)
     private BigDecimal totalAmount;
-    private Date createdDate;
-    private Date updatedDate;
+
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
     @OneToMany(
             mappedBy = "order",
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
-    private List<OrderItem> orderItems;
+    private List<OrderItem> items = new ArrayList<>();
+
+    public Order() {
+    }
 
     public Long getId() {
         return id;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public OrderStatus getStatus() {
+        return status;
+    }
+
+    public BigDecimal getTotalAmount() {
+        return totalAmount;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public List<OrderItem> getItems() {
+        return items;
     }
 
     public void setId(Long id) {
         this.id = id;
     }
 
-    public @NotBlank(message = "userId cannot be blank") Long getUserId() {
-        return userId;
-    }
-
-    public void setUserId(@NotBlank(message = "userId cannot be blank") Long userId) {
+    public void setUserId(Long userId) {
         this.userId = userId;
     }
 
-    public @NotBlank(message = "status cannot be empty") OrderStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(@NotBlank(message = "status cannot be empty") OrderStatus status) {
+    public void setStatus(OrderStatus status) {
         this.status = status;
     }
 
-    public @PositiveOrZero(message = "total_amount cannot be -ve or zero") BigDecimal getTotalAmount() {
-        return totalAmount;
-    }
-
-    public void setTotalAmount(@PositiveOrZero(message = "total_amount cannot be -ve or zero") BigDecimal totalAmount) {
+    public void setTotalAmount(BigDecimal totalAmount) {
         this.totalAmount = totalAmount;
     }
 
-    public Date getCreatedDate() {
-        return createdDate;
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 
-    public void setCreatedDate(Date createdDate) {
-        this.createdDate = createdDate;
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 
-    public Date getUpdatedDate() {
-        return updatedDate;
+    public void setItems(List<OrderItem> items) {
+        this.items = items;
     }
 
-    public void setUpdatedDate(Date updatedDate) {
-        this.updatedDate = updatedDate;
-    }
-
-    public List<OrderItem> getOrderItems() {
-        return orderItems;
-    }
-
-    public void setOrderItems(List<OrderItem> orderItems) {
-        this.orderItems = orderItems;
-    }
     public void addItem(OrderItem item) {
-        orderItems.add(item);
+        items.add(item);
         item.setOrder(this);
     }
 
     public void removeItem(OrderItem item) {
-        orderItems.remove(item);
+        items.remove(item);
         item.setOrder(null);
     }
 }

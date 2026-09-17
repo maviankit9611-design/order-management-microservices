@@ -2,6 +2,8 @@ package com.learning.order_management.model;
 
 import jakarta.persistence.*;
 
+import java.math.BigDecimal;
+
 @Entity
 public class OrderItem {
     @Id
@@ -12,9 +14,9 @@ public class OrderItem {
     @Column(nullable = false)
     private long quantity;
     @Column(nullable = false)
-    private double unitPrice;
+    private BigDecimal unitPrice;
     @Column(nullable = false)
-    private double subTotal;
+    private BigDecimal subTotal;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name="order_id",nullable = false)
     private Order order;
@@ -27,11 +29,11 @@ public class OrderItem {
         this.id = id;
     }
 
-    public Long getproductId() {
+    public Long getProductId() {
         return productId;
     }
 
-    public void setproductId(Long productId) {
+    public void setProductId(Long productId) {
         this.productId = productId;
     }
 
@@ -43,19 +45,19 @@ public class OrderItem {
         this.quantity = quantity;
     }
 
-    public double getUnitPrice() {
+    public BigDecimal getUnitPrice() {
         return unitPrice;
     }
 
-    public void setUnitPrice(double unitPrice) {
+    public void setUnitPrice(BigDecimal unitPrice) {
         this.unitPrice = unitPrice;
     }
 
-    public double getSubTotal() {
+    public BigDecimal getSubTotal() {
         return subTotal;
     }
 
-    public void setSubTotal(double subTotal) {
+    public void setSubTotal(BigDecimal subTotal) {
         this.subTotal = subTotal;
     }
 
@@ -66,4 +68,6 @@ public class OrderItem {
     public void setOrder(Order order) {
         this.order = order;
     }
+
+
 }
