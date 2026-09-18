@@ -1,9 +1,7 @@
 package com.learning.order_management.service;
 
-import com.learning.order_management.dto.CreateOrderRequest;
-import com.learning.order_management.dto.OrderItemRequest;
-import com.learning.order_management.dto.OrderItemResponse;
-import com.learning.order_management.dto.OrderResponse;
+import com.learning.order_management.client.ProductClient;
+import com.learning.order_management.dto.*;
 import com.learning.order_management.model.Order;
 import com.learning.order_management.model.OrderItem;
 import com.learning.order_management.model.OrderStatus;
@@ -12,15 +10,21 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 public class OrderService {
 
     private final OrderRepo orderRepository;
+    private final ProductClient productClient;
 
-    public OrderService(OrderRepo orderRepository) {
+    public OrderService(
+            OrderRepo orderRepository,
+            ProductClient productClient) {
+
         this.orderRepository = orderRepository;
+        this.productClient = productClient;
     }
 
     @Transactional
@@ -30,16 +34,19 @@ public class OrderService {
 
         order.setUserId(request.getUserId());
         order.setStatus(OrderStatus.PENDING);
-
-        List<OrderItem> orderItems = request.getOrderItemRequests()
+        order.setCreatedAt(LocalDateTime.now());
+        List<OrderItem> orderItems = request.getItems()
                 .stream()
                 .map(itemRequest -> mapToOrderItem(itemRequest, order))
                 .toList();
 
         order.setItems(orderItems);
 
-        // Price calculation will be added after Product Service integration.
-        order.setTotalAmount(BigDecimal.ZERO);
+        BigDecimal totalAmount = orderItems.stream()
+                .map(OrderItem::getSubTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        order.setTotalAmount(totalAmount);
 
         Order savedOrder = orderRepository.save(order);
 
@@ -50,15 +57,22 @@ public class OrderService {
             OrderItemRequest request,
             Order order) {
 
+        ProductResponse product =
+                productClient.getProductById(request.getProductId());
+        System.out.println(product);
+        BigDecimal unitPrice = product.getProductPrice();
+
+        BigDecimal totalPrice =
+                unitPrice.multiply(
+                        BigDecimal.valueOf(request.getQuantity())
+                );
+
         OrderItem item = new OrderItem();
 
         item.setProductId(request.getProductId());
         item.setQuantity(request.getQuantity());
-
-        // Product price will come from Product Service in Step 10D.
-        item.setUnitPrice(BigDecimal.ZERO);
-        item.setSubTotal(BigDecimal.ZERO);
-
+        item.setUnitPrice(unitPrice);
+        item.setSubTotal(totalPrice);
         item.setOrder(order);
 
         return item;

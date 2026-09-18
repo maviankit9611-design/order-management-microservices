@@ -9,7 +9,7 @@ public class CreateOrderRequest{
 @NotNull
 private Long userId;
 @NotEmpty(message = "order must contain atleast one item")
-private List<OrderItemRequest> orderItemRequests;
+private List<OrderItemRequest> items;
 
 public @NotNull Long getUserId() {
     return userId;
@@ -19,12 +19,12 @@ public void setUserId(@NotNull Long userId) {
     this.userId = userId;
 }
 
-public @NotEmpty(message = "order must contain atleast one item") List<OrderItemRequest> getOrderItemRequests() {
-    return orderItemRequests;
+public @NotEmpty(message = "order must contain atleast one item") List<OrderItemRequest> getItems() {
+    return items;
 }
 
-public void setOrderItemRequests(@NotEmpty(message = "order must contain atleast one item") List<OrderItemRequest> orderItemRequests) {
-    this.orderItemRequests = orderItemRequests;
+public void setItems(@NotEmpty(message = "order must contain atleast one item") List<OrderItemRequest> items) {
+    this.items = items;
 }
 
 }

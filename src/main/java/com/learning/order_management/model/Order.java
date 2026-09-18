@@ -28,7 +28,7 @@ public class Order {
             scale = 2)
     private BigDecimal totalAmount;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at")
