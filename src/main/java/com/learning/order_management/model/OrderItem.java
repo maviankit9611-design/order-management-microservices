@@ -1,6 +1,8 @@
 package com.learning.order_management.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
 import java.math.BigDecimal;
 
@@ -10,8 +12,10 @@ public class OrderItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     @Column(nullable = false)
+    @NotNull(message = "Product Id cannot be null")
     private Long productId;
     @Column(nullable = false)
+
     private long quantity;
     @Column(nullable = false)
     private BigDecimal unitPrice;

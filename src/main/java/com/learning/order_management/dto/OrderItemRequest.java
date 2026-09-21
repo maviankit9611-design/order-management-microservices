@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotNull;
 
 public class OrderItemRequest {
 
-    @NotNull
+    @NotNull ( message = "Product ID cannot be null")
     private Long productId;
     @Min(value = 1,message ="quantity should be greater than 1")
     private Integer quantity;
