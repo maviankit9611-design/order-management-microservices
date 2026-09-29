@@ -2,10 +2,14 @@ package com.learning.order_management.service;
 
 import com.learning.order_management.client.ProductClient;
 import com.learning.order_management.dto.*;
+import com.learning.order_management.exception.InsufficientStockException;
+import com.learning.order_management.exception.ProductNotFoundException;
 import com.learning.order_management.model.Order;
 import com.learning.order_management.model.OrderItem;
 import com.learning.order_management.model.OrderStatus;
 import com.learning.order_management.repo.OrderRepo;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,7 +19,6 @@ import java.util.List;
 
 @Service
 public class OrderService {
-
 
     private final OrderRepo orderRepository;
     private final ProductClient productClient;
@@ -40,12 +43,14 @@ public class OrderService {
                 .stream()
                 .map(itemRequest -> mapToOrderItem(itemRequest, order))
                 .toList();
+        for (OrderItem orderItem : orderItems) {
+            productClient.reduceStock(orderItem.getProductId(),orderItem.getQuantity());
+        }
 
         order.setItems(orderItems);
-
         BigDecimal totalAmount = orderItems.stream()
-                .map(OrderItem::getSubTotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .map(x->x.getSubTotal())
+                .reduce(BigDecimal.ZERO, (c,e)->c.add(e));
 
         order.setTotalAmount(totalAmount);
 
@@ -57,12 +62,25 @@ public class OrderService {
     private OrderItem mapToOrderItem(
             OrderItemRequest request,
             Order order) {
+        ProductResponse product;
+        try{
+            product =
+                    productClient.getProductById(request.getProductId());
 
-        ProductResponse product =
-                productClient.getProductById(request.getProductId());
-        System.out.println(product);
-        BigDecimal unitPrice = product.getProductPrice();
+        }catch (Exception e){
+            throw new ProductNotFoundException(e.getMessage());
+        }
+        if(product == null){
+            throw new ProductNotFoundException("Product not found");
+        }
+        Integer quantity = request.getQuantity();
+        int totalstock = product.getProductQuantity().intValue();
 
+        if( quantity > totalstock){
+            throw new InsufficientStockException("insufficient stock");
+        }
+
+            BigDecimal unitPrice = product.getProductPrice();
         BigDecimal totalPrice =
                 unitPrice.multiply(
                         BigDecimal.valueOf(request.getQuantity())

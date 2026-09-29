@@ -1,14 +1,16 @@
 package com.learning.order_management.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 
 public class CreateOrderRequest{
-@NotNull
+@NotNull ( message = "User Id cannot be null")
 private Long userId;
 @NotEmpty(message = "order must contain atleast one item")
+@Valid
 private List<OrderItemRequest> items;
 
 public @NotNull Long getUserId() {
