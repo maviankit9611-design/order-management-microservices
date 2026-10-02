@@ -2,11 +2,17 @@ package com.learning.order_management.service;
 
 import com.learning.order_management.client.ProductClient;
 import com.learning.order_management.dto.*;
+import com.learning.order_management.event.OrderCreatedEvent;
+import com.learning.order_management.event.OrderItemEvent;
 import com.learning.order_management.exception.InsufficientStockException;
 import com.learning.order_management.exception.ProductNotFoundException;
+import com.learning.order_management.kafka.OrderEventProducer;
 import com.learning.order_management.model.Order;
+import com.learning.order_management.model.OrderEvent;
 import com.learning.order_management.model.OrderItem;
 import com.learning.order_management.model.OrderStatus;
+import com.learning.order_management.repo.OrderEventRepo;
+import com.learning.order_management.repo.OrderItemRepo;
 import com.learning.order_management.repo.OrderRepo;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
@@ -22,13 +28,19 @@ public class OrderService {
 
     private final OrderRepo orderRepository;
     private final ProductClient productClient;
+    private final OrderEventRepo orderEventRepo;
+    private final OrderEventProducer orderEventProducer;
 
     public OrderService(
             OrderRepo orderRepository,
-            ProductClient productClient) {
+            ProductClient productClient,
+            OrderEventRepo orderEventRepo,
+            OrderEventProducer orderEventProducer) {
 
         this.orderRepository = orderRepository;
         this.productClient = productClient;
+        this.orderEventRepo = orderEventRepo;
+        this.orderEventProducer = orderEventProducer;
     }
 
     @Transactional
@@ -55,6 +67,14 @@ public class OrderService {
         order.setTotalAmount(totalAmount);
 
         Order savedOrder = orderRepository.save(order);
+        OrderEvent orderEvent = new OrderEvent();
+        orderEvent.setAggregateType("OrderCreated");
+        orderEvent.setCreatedAt(LocalDateTime.now());
+        orderEvent.setAggregateId(savedOrder.getId().toString());
+        orderEvent.setEventType("OrderEvent");
+        orderEvent.setStatus("PENDING");
+        orderEventRepo.save(orderEvent);
+        orderEventProducer.publishOrderCreated(createOrderCreatedEvent(savedOrder));
 
         return mapToResponse(savedOrder);
     }
@@ -126,5 +146,28 @@ public class OrderService {
         response.setTotalPrice(item.getSubTotal());
 
         return response;
+    }
+    private OrderCreatedEvent createOrderCreatedEvent(Order order) {
+
+        List<OrderItemEvent> items =
+                order.getItems()
+                        .stream()
+                        .map(item ->
+                                new OrderItemEvent(
+                                        item.getProductId(),
+                                        item.getQuantity(),
+                                        item.getUnitPrice(),
+                                        item.getSubTotal()
+                                )
+                        )
+                        .toList();
+
+        return new OrderCreatedEvent(
+                order.getId(),
+                order.getTotalAmount(),
+                order.getStatus(),
+                order.getCreatedAt(),
+                items
+        );
     }
 }
