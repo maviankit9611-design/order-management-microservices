@@ -1,5 +1,7 @@
 package com.learning.order_management.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.learning.order_management.client.ProductClient;
 import com.learning.order_management.dto.*;
 import com.learning.order_management.event.OrderCreatedEvent;
@@ -18,6 +20,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -30,27 +34,31 @@ public class OrderService {
     private final ProductClient productClient;
     private final OrderEventRepo orderEventRepo;
     private final OrderEventProducer orderEventProducer;
+    private final ObjectMapper objectMapper;
 
     public OrderService(
             OrderRepo orderRepository,
             ProductClient productClient,
             OrderEventRepo orderEventRepo,
-            OrderEventProducer orderEventProducer) {
+            OrderEventProducer orderEventProducer,
+            ObjectMapper objectMapper) {
 
         this.orderRepository = orderRepository;
         this.productClient = productClient;
         this.orderEventRepo = orderEventRepo;
         this.orderEventProducer = orderEventProducer;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional
     public OrderResponse createOrder(CreateOrderRequest request) {
-
+        //create order
         Order order = new Order();
-
+        //Adding order details
         order.setUserId(request.getUserId());
         order.setStatus(OrderStatus.PENDING);
         order.setCreatedAt(LocalDateTime.now());
+        //Add order items
         List<OrderItem> orderItems = request.getItems()
                 .stream()
                 .map(itemRequest -> mapToOrderItem(itemRequest, order))
@@ -58,23 +66,34 @@ public class OrderService {
         for (OrderItem orderItem : orderItems) {
             productClient.reduceStock(orderItem.getProductId(),orderItem.getQuantity());
         }
-
         order.setItems(orderItems);
+        //Calculate Toatl Amount
         BigDecimal totalAmount = orderItems.stream()
                 .map(x->x.getSubTotal())
                 .reduce(BigDecimal.ZERO, (c,e)->c.add(e));
 
         order.setTotalAmount(totalAmount);
-
+        //Save order
         Order savedOrder = orderRepository.save(order);
+        //Create order event
         OrderEvent orderEvent = new OrderEvent();
         orderEvent.setAggregateType("OrderCreated");
         orderEvent.setCreatedAt(LocalDateTime.now());
         orderEvent.setAggregateId(savedOrder.getId().toString());
+        String payload;
+
+        try {
+            payload = objectMapper.writeValueAsString(
+                    createOrderCreatedEvent(savedOrder)
+            );
+            orderEvent.setPayload(payload);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to serialize OrderCreatedEvent", e);
+        }
         orderEvent.setEventType("OrderEvent");
         orderEvent.setStatus("PENDING");
+        //Save order Event
         orderEventRepo.save(orderEvent);
-        orderEventProducer.publishOrderCreated(createOrderCreatedEvent(savedOrder));
 
         return mapToResponse(savedOrder);
     }
@@ -148,6 +167,7 @@ public class OrderService {
         return response;
     }
     private OrderCreatedEvent createOrderCreatedEvent(Order order) {
+
 
         List<OrderItemEvent> items =
                 order.getItems()

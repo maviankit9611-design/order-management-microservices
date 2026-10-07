@@ -3,13 +3,16 @@ package com.learning.order_management.model;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 
 public class OrderEvent {
+
+    UUID eventId;
     @Id
     @GeneratedValue(strategy=GenerationType.IDENTITY)
-    private Long Id;
+    private Long orderId;
     private String aggregateType;
     private String aggregateId;
     private String eventType;
@@ -18,13 +21,20 @@ public class OrderEvent {
     private String status;
     private LocalDateTime createdAt;
 
-
-    public Long getId() {
-        return Id;
+    public UUID getEventId() {
+        return eventId;
     }
 
-    public void setId(Long id) {
-        Id = id;
+    public void setEventId(UUID eventId) {
+        this.eventId = eventId;
+    }
+
+    public Long getOrderId() {
+        return orderId;
+    }
+
+    public void setOrderId(Long orderId) {
+        this.orderId = orderId;
     }
 
     public String getAggregateType() {

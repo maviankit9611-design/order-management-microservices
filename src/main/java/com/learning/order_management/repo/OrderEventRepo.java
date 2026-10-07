@@ -7,6 +7,6 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface OrderEventRepo extends CrudRepository<OrderEvent, Integer> {
+public interface OrderEventRepo extends CrudRepository<OrderEvent, Long> {
     List<OrderEvent> findByStatusOrderByCreatedAtAsc(String status);
 }
