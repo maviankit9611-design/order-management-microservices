@@ -1,5 +1,6 @@
 package com.learning.order_management.service;
 
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.learning.order_management.client.ProductClient;
@@ -16,12 +17,8 @@ import com.learning.order_management.model.OrderStatus;
 import com.learning.order_management.repo.OrderEventRepo;
 import com.learning.order_management.repo.OrderItemRepo;
 import com.learning.order_management.repo.OrderRepo;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotEmpty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
