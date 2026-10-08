@@ -26,6 +26,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class OrderService {
@@ -183,6 +184,7 @@ public class OrderService {
                         .toList();
 
         return new OrderCreatedEvent(
+                UUID.randomUUID(),
                 order.getId(),
                 order.getTotalAmount(),
                 order.getStatus(),
