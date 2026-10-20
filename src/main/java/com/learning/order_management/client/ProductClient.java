@@ -17,4 +17,9 @@ public interface ProductClient {
             @PathVariable Long id,
             @RequestParam Long quantity);
 
+    @PutMapping("/api/products/{id}/restore-stock")
+    void restoreStock(
+            @PathVariable Long id,
+            @RequestParam Long quantity);
+
 }

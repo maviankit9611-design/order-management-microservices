@@ -2,7 +2,10 @@ package com.learning.order_management.kafka;
 
 import com.learning.order_management.event.OrderCreatedEvent;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
+
+import java.util.concurrent.CompletableFuture;
 
 
 @Service
@@ -15,9 +18,9 @@ public class OrderEventProducer {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    public void publishOrderCreated(OrderCreatedEvent event) {
+    public CompletableFuture<SendResult<String, OrderCreatedEvent>> publishOrderCreated(OrderCreatedEvent event) {
 
-        kafkaTemplate.send("order-created", event);
+        return kafkaTemplate.send("order-created", event.eventId().toString(), event);
 
     }
 }

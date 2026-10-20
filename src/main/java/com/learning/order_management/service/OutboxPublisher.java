@@ -7,11 +7,15 @@ import com.learning.order_management.model.OrderEvent;
 import com.learning.order_management.repo.OrderEventRepo;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 @Component
 public class OutboxPublisher {
+
+    private static final Logger log = LoggerFactory.getLogger(OutboxPublisher.class);
 
     private final OrderEventRepo orderEventRepo;
     private final OrderEventProducer orderEventProducer;
@@ -27,7 +31,7 @@ public class OutboxPublisher {
         this.objectMapper = objectMapper;
     }
 
-    @Scheduled(fixedDelay = 5000)
+    @Scheduled(fixedDelay = 50000)
     public void publishPendingEvents() {
 
         List<OrderEvent> events =
@@ -43,7 +47,8 @@ public class OutboxPublisher {
                                 OrderCreatedEvent.class
                         );
 
-                orderEventProducer.publishOrderCreated(orderCreatedEvent);
+                // Do not mark the outbox row published until Kafka has acknowledged it.
+                orderEventProducer.publishOrderCreated(orderCreatedEvent).get();
 
                 event.setStatus("PUBLISHED");
 
@@ -51,12 +56,7 @@ public class OutboxPublisher {
 
             } catch (Exception e) {
 
-                System.err.println(
-                        "Failed to publish outbox event ID: "
-                                + event.getOrderId()
-                                + ", Error: "
-                                + e.getMessage()
-                );
+                log.error("Failed to publish outbox event ID {}", event.getOrderId(), e);
             }
         }
     }

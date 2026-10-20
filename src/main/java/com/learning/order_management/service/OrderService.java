@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.UUID;
 
 @Service
@@ -61,39 +62,44 @@ public class OrderService {
                 .stream()
                 .map(itemRequest -> mapToOrderItem(itemRequest, order))
                 .toList();
-        for (OrderItem orderItem : orderItems) {
-            productClient.reduceStock(orderItem.getProductId(),orderItem.getQuantity());
-        }
-        order.setItems(orderItems);
-        //Calculate Toatl Amount
-        BigDecimal totalAmount = orderItems.stream()
-                .map(x->x.getSubTotal())
-                .reduce(BigDecimal.ZERO, (c,e)->c.add(e));
-
-        order.setTotalAmount(totalAmount);
-        //Save order
-        Order savedOrder = orderRepository.save(order);
-        //Create order event
-        OrderEvent orderEvent = new OrderEvent();
-        orderEvent.setAggregateType("OrderCreated");
-        orderEvent.setCreatedAt(LocalDateTime.now());
-        orderEvent.setAggregateId(savedOrder.getId().toString());
-        String payload;
-
+        List<OrderItem> reducedItems = new ArrayList<>();
         try {
-            payload = objectMapper.writeValueAsString(
-                    createOrderCreatedEvent(savedOrder)
-            );
-            orderEvent.setPayload(payload);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to serialize OrderCreatedEvent", e);
-        }
-        orderEvent.setEventType("OrderEvent");
-        orderEvent.setStatus("PENDING");
-        //Save order Event
-        orderEventRepo.save(orderEvent);
+            for (OrderItem orderItem : orderItems) {
+                productClient.reduceStock(orderItem.getProductId(), orderItem.getQuantity());
+                reducedItems.add(orderItem);
+            }
+            order.setItems(orderItems);
+            BigDecimal totalAmount = orderItems.stream()
+                    .map(OrderItem::getSubTotal)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        return mapToResponse(savedOrder);
+            order.setTotalAmount(totalAmount);
+            Order savedOrder = orderRepository.save(order);
+            OrderCreatedEvent eventPayload = createOrderCreatedEvent(savedOrder);
+            OrderEvent orderEvent = new OrderEvent();
+            orderEvent.setEventId(eventPayload.eventId());
+            orderEvent.setAggregateType("OrderCreated");
+            orderEvent.setCreatedAt(LocalDateTime.now());
+            orderEvent.setAggregateId(savedOrder.getId().toString());
+            try {
+                orderEvent.setPayload(objectMapper.writeValueAsString(eventPayload));
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException("Failed to serialize OrderCreatedEvent", e);
+            }
+            orderEvent.setEventType("OrderCreated");
+            orderEvent.setStatus("PENDING");
+            orderEventRepo.save(orderEvent);
+            return mapToResponse(savedOrder);
+        } catch (RuntimeException failure) {
+            for (OrderItem item : reducedItems.reversed()) {
+                try {
+                    productClient.restoreStock(item.getProductId(), item.getQuantity());
+                } catch (RuntimeException compensationFailure) {
+                    failure.addSuppressed(compensationFailure);
+                }
+            }
+            throw failure;
+        }
     }
 
     private OrderItem mapToOrderItem(

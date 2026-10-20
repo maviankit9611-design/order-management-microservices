@@ -33,8 +33,11 @@ public class KafkaProducerConfig {
 
         config.put(
                 ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-                JacksonJsonSerializer.class
+                    JacksonJsonSerializer.class
         );
+
+        // Consumers deserialize to their local event type instead of trusting Java type headers.
+        config.put(JacksonJsonSerializer.ADD_TYPE_INFO_HEADERS, false);
 
         return new DefaultKafkaProducerFactory<>(config);
     }

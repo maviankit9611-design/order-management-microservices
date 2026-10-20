@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.UUID;
 
 public record OrderCreatedEvent(
-                                UUID EventId,
+                                UUID eventId,
                                 Long orderId,
                                 BigDecimal totalAmount,
                                 com.learning.order_management.model.OrderStatus status,
