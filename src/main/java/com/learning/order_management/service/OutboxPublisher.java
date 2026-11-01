@@ -7,6 +7,7 @@ import com.learning.order_management.model.OrderEvent;
 import com.learning.order_management.repo.OrderEventRepo;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,10 +33,11 @@ public class OutboxPublisher {
     }
 
     @Scheduled(fixedDelay = 50000)
+    @Transactional
     public void publishPendingEvents() {
 
         List<OrderEvent> events =
-                orderEventRepo.findByStatusOrderByCreatedAtAsc("PENDING");
+                orderEventRepo.findByStatusForUpdateOrderByCreatedAtAsc("PENDING");
 
         for (OrderEvent event : events) {
 

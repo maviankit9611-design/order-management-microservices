@@ -7,19 +7,10 @@ import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 public class CreateOrderRequest{
-@NotNull ( message = "User Id cannot be null")
-private Long userId;
+
 @NotEmpty(message = "order must contain atleast one item")
 @Valid
 private List<OrderItemRequest> items;
-
-public @NotNull Long getUserId() {
-    return userId;
-}
-
-public void setUserId(@NotNull Long userId) {
-    this.userId = userId;
-}
 
 public @NotEmpty(message = "order must contain atleast one item") List<OrderItemRequest> getItems() {
     return items;

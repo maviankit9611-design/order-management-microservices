@@ -19,6 +19,10 @@ import com.learning.order_management.repo.OrderItemRepo;
 import com.learning.order_management.repo.OrderRepo;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -28,6 +32,8 @@ import java.util.UUID;
 
 @Service
 public class OrderService {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
     private final OrderRepo orderRepository;
     private final ProductClient productClient;
@@ -50,11 +56,11 @@ public class OrderService {
     }
 
     @Transactional
-    public OrderResponse createOrder(CreateOrderRequest request) {
+    public OrderResponse createOrder(CreateOrderRequest request,Long userId) {
         //create order
         Order order = new Order();
         //Adding order details
-        order.setUserId(request.getUserId());
+        order.setUserId(userId);
         order.setStatus(OrderStatus.PENDING);
         order.setCreatedAt(LocalDateTime.now());
         //Add order items
@@ -63,6 +69,7 @@ public class OrderService {
                 .map(itemRequest -> mapToOrderItem(itemRequest, order))
                 .toList();
         List<OrderItem> reducedItems = new ArrayList<>();
+        registerStockCompensation(reducedItems);
         try {
             for (OrderItem orderItem : orderItems) {
                 productClient.reduceStock(orderItem.getProductId(), orderItem.getQuantity());
@@ -91,14 +98,36 @@ public class OrderService {
             orderEventRepo.save(orderEvent);
             return mapToResponse(savedOrder);
         } catch (RuntimeException failure) {
-            for (OrderItem item : reducedItems.reversed()) {
-                try {
-                    productClient.restoreStock(item.getProductId(), item.getQuantity());
-                } catch (RuntimeException compensationFailure) {
-                    failure.addSuppressed(compensationFailure);
-                }
+            if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+                restoreStock(reducedItems);
             }
             throw failure;
+        }
+    }
+
+    private void registerStockCompensation(List<OrderItem> reducedItems) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == STATUS_ROLLED_BACK) {
+                    restoreStock(reducedItems);
+                }
+            }
+        });
+    }
+
+    private void restoreStock(List<OrderItem> reducedItems) {
+        for (int index = reducedItems.size() - 1; index >= 0; index--) {
+            OrderItem item = reducedItems.get(index);
+            try {
+                productClient.restoreStock(item.getProductId(), item.getQuantity());
+            } catch (RuntimeException compensationFailure) {
+                log.error("Failed to restore stock for product {} after order rollback", item.getProductId(), compensationFailure);
+            }
         }
     }
 
